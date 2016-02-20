@@ -120,23 +120,11 @@ export class Connection {
             case Op.symbols:
                 return {
                     op: msg.op,
-                    symbols: this.transformSymbols(JSON.parse(msg.payload))
+                    symbols: JSON.parse(msg.payload)
                 };
             default:
                 return null;
         }
-    }
-
-    private transformSymbols(symbols: any) {
-        let newSymbols: Symbols = {
-            functions: []
-        };
-        newSymbols.functions = (symbols['functions'] || []).map((f: any) => {
-            return {
-                name: f['name'] + '/' + f.arity,
-                line: f.line};
-        });
-        return newSymbols;
     }
 
     private makeMessage(op: string, payload: string) {

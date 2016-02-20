@@ -95,23 +95,23 @@ var Connection = (function () {
             case Op.symbols:
                 return {
                     op: msg.op,
-                    symbols: this.transformSymbols(JSON.parse(msg.payload))
+                    symbols: JSON.parse(msg.payload)
                 };
             default:
                 return null;
         }
     };
-    Connection.prototype.transformSymbols = function (symbols) {
-        var newSymbols = {
-            functions: []
-        };
-        newSymbols.functions = (symbols['functions'] || []).map(function (f) {
-            return {
-                name: f['name'] + '/' + f.arity,
-                line: f.line };
-        });
-        return newSymbols;
-    };
+    // private transformSymbols(symbols: any) {
+    //     let newSymbols: Symbols = {
+    //         functions: []
+    //     };
+    //     newSymbols.functions = (symbols['functions'] || []).map((f: any) => {
+    //         return {
+    //             name: f['name'] + '/' + f.arity,
+    //             line: f.line};
+    //     });
+    //     return newSymbols;
+    // }
     Connection.prototype.makeMessage = function (op, payload) {
         return [op, ' ', payload.length, '\r\n', payload, '\r\n'].join('');
     };
