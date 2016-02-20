@@ -50,6 +50,7 @@ var Connection = (function () {
             }
         };
         var errorFun = function (error) {
+            _this.socket.removeListener('error', errorFun);
             callback(error, []);
         };
         this.socket.write(this.makeGetSymbolsMessage(path));
