@@ -38,8 +38,9 @@ var Connection = (function () {
     };
     Connection.prototype.getSymbols = function (path, callback) {
         var _this = this;
-        this.socket.write(this.makeGetSymbolsMessage(path));
-        this.socket.once('data', function (data) {
+        var dataFun = function (data) {
+            _this.socket.removeListener('data', dataFun);
+            console.log('listener count: ', _this.socket.listenerCount('data'));
             var msg = _this.parseText(data);
             if (msg === null) {
                 callback('parse_error', '');
@@ -47,10 +48,13 @@ var Connection = (function () {
             else {
                 callback(null, msg.symbols);
             }
-        });
-        this.socket.once('error', function (error) {
+        };
+        var errorFun = function (error) {
             callback(error, []);
-        });
+        };
+        this.socket.write(this.makeGetSymbolsMessage(path));
+        this.socket.once('data', dataFun);
+        this.socket.once('error', errorFun);
     };
     Connection.prototype.parseText = function (text) {
         try {
@@ -101,17 +105,6 @@ var Connection = (function () {
                 return null;
         }
     };
-    // private transformSymbols(symbols: any) {
-    //     let newSymbols: Symbols = {
-    //         functions: []
-    //     };
-    //     newSymbols.functions = (symbols['functions'] || []).map((f: any) => {
-    //         return {
-    //             name: f['name'] + '/' + f.arity,
-    //             line: f.line};
-    //     });
-    //     return newSymbols;
-    // }
     Connection.prototype.makeMessage = function (op, payload) {
         return [op, ' ', payload.length, '\r\n', payload, '\r\n'].join('');
     };

@@ -58,8 +58,9 @@ export class Connection {
     }
 
     public getSymbols(path: string, callback: Function) {
-        this.socket.write(this.makeGetSymbolsMessage(path));
-        this.socket.once('data', (data: string) => {
+        let dataFun = (data: string) => {
+            this.socket.removeListener('data', dataFun);
+            console.log('listener count: ', this.socket.listenerCount('data'));
             const msg = this.parseText(data);
             if (msg === null) {
                 callback('parse_error', '');
@@ -67,10 +68,16 @@ export class Connection {
             else {
                 callback(null, msg.symbols);
             }
-        });
-        this.socket.once('error', (error: any) => {
+        }
+
+        let errorFun = (error: any) => {
+            this.socket.removeListener('error', errorFun);
             callback(error, []);
-        })
+        };
+
+        this.socket.write(this.makeGetSymbolsMessage(path));
+        this.socket.once('data', dataFun);
+        this.socket.once('error', errorFun)
     }
 
     private parseText(text: string) {
