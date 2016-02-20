@@ -1,5 +1,5 @@
 {
-  "name": "whatels-node",
+  "name": "whatels",
   "version": "0.1.0",
   "description": "Node client for Whatels.",
   "main": "index.js",
