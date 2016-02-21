@@ -53,25 +53,30 @@ export class Connection {
     constructor(private port: number = 10999,
                 private host: string = '127.0.0.1') {}
 
-    public connect(callback: Function) {
-        this.socket = createSocket();
-        this.socket.connect(this.port, this.host, () => {
-            tmp.file({keep: true}, (err, path, fd, cleanup) => {
-                if (err) {
-                    throw err;
-                }
-                console.log('temp path: ', path);
-                this.tempPath = path;
-                this.cleanupCallback = cleanup;
-                return callback(false);
+    public connect(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            if (this.socket) {
+                this.close();
+            }
+            this.socket = createSocket();
+            this.socket.connect(this.port, this.host, () => {
+                tmp.file({keep: true}, (err, path, fd, cleanup) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    console.log('temp path: ', path);
+                    this.tempPath = path;
+                    this.cleanupCallback = cleanup;
+                    return resolve();
+                });
             });
-        });
-        this.socket.on('error', (error: any) => {
-            this.socket = null;
-            callback(error);
-        });
-        this.socket.on('close', () => {
-            this.cleanup();
+            this.socket.on('error', (error: any) => {
+                this.socket = null;
+                reject(error);
+            });
+            this.socket.on('close', () => {
+                this.cleanup();
+            });
         });
     }
 
@@ -84,35 +89,42 @@ export class Connection {
         this.socket.unref();
     }
 
-    public getSymbols(source: string, callback: Function) {
-        fs.writeFile(this.tempPath, source, err => {
-            return this.getPathSymbols(this.tempPath, callback);
-        });
+    public getSymbols(source: string): Promise<Symbols> {
+        return new Promise<Symbols>((resolve, reject) => {
+            fs.writeFile(this.tempPath, source, err => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    this.getPathSymbols(this.tempPath).then(
+                        symbols => resolve(symbols),
+                        err => reject(err)
+                    );
+                }
+            });
+        })
     }
 
-    public getPathSymbols(path: string, callback: Function) {
-        let dataFun = (data: string) => {
-            this.socket.removeListener('data', dataFun);
-            this.socket.removeListener('error', errorFun);
-            console.log('listener count: ', this.socket.listenerCount('data'));
-            const msg = this.parseText(data);
-            if (msg === null) {
-                callback('parse_error', '');
+    public getPathSymbols(path: string): Promise<Symbols> {
+        return new Promise<Symbols>((resolve, reject) => {
+            let dataFun = (data: string) => {
+                this.socket.removeListener('data', dataFun);
+                this.socket.removeListener('error', errorFun);
+                console.log('listener count: ', this.socket.listenerCount('data'));
+                const msg = this.parseText(data);
+                (msg === null)? reject('parse_error') : resolve(msg.symbols);
             }
-            else {
-                callback(null, msg.symbols);
-            }
-        }
 
-        let errorFun = (error: any) => {
-            this.socket.removeListener('data', dataFun);
-            this.socket.removeListener('error', errorFun);
-            callback(error, []);
-        };
+            let errorFun = (error: any) => {
+                this.socket.removeListener('data', dataFun);
+                this.socket.removeListener('error', errorFun);
+                reject(error);
+            };
 
-        this.socket.write(this.makeGetSymbolsMessage(path));
-        this.socket.on('data', dataFun);
-        this.socket.on('error', errorFun)
+            this.socket.write(this.makeGetSymbolsMessage(path));
+            this.socket.on('data', dataFun);
+            this.socket.on('error', errorFun)
+        });
     }
 
     private cleanup() {

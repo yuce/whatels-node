@@ -9,25 +9,17 @@ if (!path) {
 }
 
 var w = new whatels.Connection();
-w.connect((error) => {
-    if (!error) {
+w.connect().then(
+    () => {
         console.log('connected');
-        fs.readFile(path, 'utf8', (err, data) => {
-            if (err) {
-                console.error(err);
-            }
-            w.getSymbols(data, (err, symbols) => {
-                w.close();
-                if (err) {
-                    console.error('error during getSymbols: ', err);
-                }
-                else {
-                    console.log(symbols);
-                }
+        return new Promise((resolve, reject) => {
+            fs.readFile(path, 'utf8', (err, data) => {
+                return err? reject(err) : resolve(w.getSymbols(data));
             });
-        })
-    }
-    else {
-        console.error('error during connect: ', error);
-    }
-});
+        });
+    },
+    err => console.error(err)
+).then(symbols => {
+    w.close();
+    console.log(symbols);
+}, err => console.error(err));

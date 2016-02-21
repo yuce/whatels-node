@@ -26,26 +26,31 @@ var Connection = (function () {
         this.tempPath = '';
         this.cleanupCallback = null;
     }
-    Connection.prototype.connect = function (callback) {
+    Connection.prototype.connect = function () {
         var _this = this;
-        this.socket = createSocket();
-        this.socket.connect(this.port, this.host, function () {
-            tmp.file({ keep: true }, function (err, path, fd, cleanup) {
-                if (err) {
-                    throw err;
-                }
-                console.log('temp path: ', path);
-                _this.tempPath = path;
-                _this.cleanupCallback = cleanup;
-                return callback(false);
+        return new Promise(function (resolve, reject) {
+            if (_this.socket) {
+                _this.close();
+            }
+            _this.socket = createSocket();
+            _this.socket.connect(_this.port, _this.host, function () {
+                tmp.file({ keep: true }, function (err, path, fd, cleanup) {
+                    if (err) {
+                        return reject(err);
+                    }
+                    console.log('temp path: ', path);
+                    _this.tempPath = path;
+                    _this.cleanupCallback = cleanup;
+                    return resolve();
+                });
             });
-        });
-        this.socket.on('error', function (error) {
-            _this.socket = null;
-            callback(error);
-        });
-        this.socket.on('close', function () {
-            _this.cleanup();
+            _this.socket.on('error', function (error) {
+                _this.socket = null;
+                reject(error);
+            });
+            _this.socket.on('close', function () {
+                _this.cleanup();
+            });
         });
     };
     Connection.prototype.close = function () {
@@ -55,34 +60,38 @@ var Connection = (function () {
     Connection.prototype.unref = function () {
         this.socket.unref();
     };
-    Connection.prototype.getSymbols = function (source, callback) {
+    Connection.prototype.getSymbols = function (source) {
         var _this = this;
-        fs.writeFile(this.tempPath, source, function (err) {
-            return _this.getPathSymbols(_this.tempPath, callback);
+        return new Promise(function (resolve, reject) {
+            fs.writeFile(_this.tempPath, source, function (err) {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    _this.getPathSymbols(_this.tempPath).then(function (symbols) { return resolve(symbols); }, function (err) { return reject(err); });
+                }
+            });
         });
     };
-    Connection.prototype.getPathSymbols = function (path, callback) {
+    Connection.prototype.getPathSymbols = function (path) {
         var _this = this;
-        var dataFun = function (data) {
-            _this.socket.removeListener('data', dataFun);
-            _this.socket.removeListener('error', errorFun);
-            console.log('listener count: ', _this.socket.listenerCount('data'));
-            var msg = _this.parseText(data);
-            if (msg === null) {
-                callback('parse_error', '');
-            }
-            else {
-                callback(null, msg.symbols);
-            }
-        };
-        var errorFun = function (error) {
-            _this.socket.removeListener('data', dataFun);
-            _this.socket.removeListener('error', errorFun);
-            callback(error, []);
-        };
-        this.socket.write(this.makeGetSymbolsMessage(path));
-        this.socket.on('data', dataFun);
-        this.socket.on('error', errorFun);
+        return new Promise(function (resolve, reject) {
+            var dataFun = function (data) {
+                _this.socket.removeListener('data', dataFun);
+                _this.socket.removeListener('error', errorFun);
+                console.log('listener count: ', _this.socket.listenerCount('data'));
+                var msg = _this.parseText(data);
+                (msg === null) ? reject('parse_error') : resolve(msg.symbols);
+            };
+            var errorFun = function (error) {
+                _this.socket.removeListener('data', dataFun);
+                _this.socket.removeListener('error', errorFun);
+                reject(error);
+            };
+            _this.socket.write(_this.makeGetSymbolsMessage(path));
+            _this.socket.on('data', dataFun);
+            _this.socket.on('error', errorFun);
+        });
     };
     Connection.prototype.cleanup = function () {
         if (this.cleanupCallback) {
