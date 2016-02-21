@@ -1,6 +1,8 @@
 /// <reference path="typings/tsd.d.ts" />
 
 import net = require('net');
+import tmp = require('tmp');
+import fs = require('fs');
 
 enum Op {
     symbols,
@@ -17,8 +19,14 @@ export interface FunctionInfo {
     line: number;
 }
 
+export interface ErrorInfo {
+    error: string;
+    line: number;
+}
+
 export interface Symbols {
     functions: FunctionInfo[];
+    errors: ErrorInfo[];
 }
 
 export interface SymbolsMessage {
@@ -31,33 +39,58 @@ const stringToOp: any = {
     "SYMBOLS?": Op.symbolsQ
 }
 
+function createSocket() {
+    let socket = new net.Socket();
+    socket.setEncoding('utf8');
+    return socket;
+}
+
 export class Connection {
     private socket: net.Socket = null;
+    private tempPath = '';
+    private cleanupCallback: Function = null;
 
     constructor(private port: number = 10999,
                 private host: string = '127.0.0.1') {}
 
     public connect(callback: Function) {
-        this.socket = new net.Socket();
+        this.socket = createSocket();
         this.socket.connect(this.port, this.host, () => {
-            this.socket.setEncoding('utf8');
-            return callback(false);
+            tmp.file({keep: true}, (err, path, fd, cleanup) => {
+                if (err) {
+                    throw err;
+                }
+                console.log('temp path: ', path);
+                this.tempPath = path;
+                this.cleanupCallback = cleanup;
+                return callback(false);
+            });
         });
-        this.socket.once('error', (error: any) => {
+        this.socket.on('error', (error: any) => {
+            this.socket = null;
             callback(error);
+        });
+        this.socket.on('close', () => {
+            this.cleanup();
         });
     }
 
     public close() {
         this.socket.end();
-        this.socket = null;
+        this.cleanup();
     }
 
     public unref() {
         this.socket.unref();
     }
 
-    public getSymbols(path: string, callback: Function) {
+    public getSymbols(source: string, callback: Function) {
+        fs.writeFile(this.tempPath, source, err => {
+            return this.getPathSymbols(this.tempPath, callback);
+        });
+    }
+
+    public getPathSymbols(path: string, callback: Function) {
         let dataFun = (data: string) => {
             this.socket.removeListener('data', dataFun);
             console.log('listener count: ', this.socket.listenerCount('data'));
@@ -76,8 +109,16 @@ export class Connection {
         };
 
         this.socket.write(this.makeGetSymbolsMessage(path));
-        this.socket.once('data', dataFun);
-        this.socket.once('error', errorFun)
+        this.socket.on('data', dataFun);
+        this.socket.on('error', errorFun)
+    }
+
+    private cleanup() {
+        if (this.cleanupCallback) {
+            this.cleanupCallback();
+            this.cleanupCallback = null;
+        }
+        this.socket = null;
     }
 
     private parseText(text: string) {
@@ -120,7 +161,6 @@ export class Connection {
         }
         return {op: op, payloadLen: payloadLen};
     }
-
 
     private parseMessage(msg: Message) {
         switch (msg.op) {

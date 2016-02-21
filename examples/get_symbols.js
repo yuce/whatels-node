@@ -11,7 +11,7 @@ w.connect((error) => {
     if (!error) {
         console.log('connected');
         w.getSymbols(path, (err, symbols) => {
-            w.unref();
+            w.close();
             if (err) {
                 console.error('error during getSymbols: ', err);
             }

@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/yuce/whatels-node/issues"
   },
-  "homepage": "https://github.com/yuce/whatels-node#readme"
+  "homepage": "https://github.com/yuce/whatels-node#readme",
+  "dependencies": {
+    "tmp": "0.0.28"
+  }
 }

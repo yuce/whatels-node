@@ -1,6 +1,8 @@
 /// <reference path="typings/tsd.d.ts" />
 "use strict";
 var net = require('net');
+var tmp = require('tmp');
+var fs = require('fs');
 var Op;
 (function (Op) {
     Op[Op["symbols"] = 0] = "symbols";
@@ -10,6 +12,11 @@ var stringToOp = {
     "SYMBOLS": Op.symbols,
     "SYMBOLS?": Op.symbolsQ
 };
+function createSocket() {
+    var socket = new net.Socket();
+    socket.setEncoding('utf8');
+    return socket;
+}
 var Connection = (function () {
     function Connection(port, host) {
         if (port === void 0) { port = 10999; }
@@ -17,26 +24,45 @@ var Connection = (function () {
         this.port = port;
         this.host = host;
         this.socket = null;
+        this.tempPath = '';
+        this.cleanupCallback = null;
     }
     Connection.prototype.connect = function (callback) {
         var _this = this;
-        this.socket = new net.Socket();
+        this.socket = createSocket();
         this.socket.connect(this.port, this.host, function () {
-            _this.socket.setEncoding('utf8');
-            return callback(false);
+            tmp.file({ keep: true }, function (err, path, fd, cleanup) {
+                if (err) {
+                    throw err;
+                }
+                console.log('temp path: ', path);
+                _this.tempPath = path;
+                _this.cleanupCallback = cleanup;
+                return callback(false);
+            });
         });
-        this.socket.once('error', function (error) {
+        this.socket.on('error', function (error) {
+            _this.socket = null;
             callback(error);
+        });
+        this.socket.on('close', function () {
+            _this.cleanup();
         });
     };
     Connection.prototype.close = function () {
         this.socket.end();
-        this.socket = null;
+        this.cleanup();
     };
     Connection.prototype.unref = function () {
         this.socket.unref();
     };
-    Connection.prototype.getSymbols = function (path, callback) {
+    Connection.prototype.getSymbols = function (source, callback) {
+        var _this = this;
+        fs.writeFile(this.tempPath, source, function (err) {
+            return _this.getPathSymbols(_this.tempPath, callback);
+        });
+    };
+    Connection.prototype.getPathSymbols = function (path, callback) {
         var _this = this;
         var dataFun = function (data) {
             _this.socket.removeListener('data', dataFun);
@@ -54,8 +80,15 @@ var Connection = (function () {
             callback(error, []);
         };
         this.socket.write(this.makeGetSymbolsMessage(path));
-        this.socket.once('data', dataFun);
-        this.socket.once('error', errorFun);
+        this.socket.on('data', dataFun);
+        this.socket.on('error', errorFun);
+    };
+    Connection.prototype.cleanup = function () {
+        if (this.cleanupCallback) {
+            this.cleanupCallback();
+            this.cleanupCallback = null;
+        }
+        this.socket = null;
     };
     Connection.prototype.parseText = function (text) {
         try {
