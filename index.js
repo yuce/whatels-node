@@ -65,6 +65,7 @@ var Connection = (function () {
         var _this = this;
         var dataFun = function (data) {
             _this.socket.removeListener('data', dataFun);
+            _this.socket.removeListener('error', errorFun);
             console.log('listener count: ', _this.socket.listenerCount('data'));
             var msg = _this.parseText(data);
             if (msg === null) {
@@ -75,6 +76,7 @@ var Connection = (function () {
             }
         };
         var errorFun = function (error) {
+            _this.socket.removeListener('data', dataFun);
             _this.socket.removeListener('error', errorFun);
             callback(error, []);
         };

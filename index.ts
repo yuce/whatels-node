@@ -93,6 +93,7 @@ export class Connection {
     public getPathSymbols(path: string, callback: Function) {
         let dataFun = (data: string) => {
             this.socket.removeListener('data', dataFun);
+            this.socket.removeListener('error', errorFun);
             console.log('listener count: ', this.socket.listenerCount('data'));
             const msg = this.parseText(data);
             if (msg === null) {
@@ -104,6 +105,7 @@ export class Connection {
         }
 
         let errorFun = (error: any) => {
+            this.socket.removeListener('data', dataFun);
             this.socket.removeListener('error', errorFun);
             callback(error, []);
         };
