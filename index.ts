@@ -1,4 +1,3 @@
-/// <reference path="typings/tsd.d.ts" />
 
 import net = require('net');
 import tmp = require('tmp');

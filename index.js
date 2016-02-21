@@ -1,4 +1,3 @@
-/// <reference path="typings/tsd.d.ts" />
 "use strict";
 var net = require('net');
 var tmp = require('tmp');
