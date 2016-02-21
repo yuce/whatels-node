@@ -1,6 +1,6 @@
 {
   "name": "whatels",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node client for Whatels.",
   "main": "index.js",
   "scripts": {
@@ -15,12 +15,15 @@
     "whatels"
   ],
   "author": "Yüce Tekol <yucetekol@gmail.com> (http://yuce.me)",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/yuce/whatels-node/issues"
   },
   "homepage": "https://github.com/yuce/whatels-node#readme",
   "dependencies": {
     "tmp": "0.0.28"
+  },
+  "devDependencies": {
+      "typescript": "^1.7.5"
   }
 }
