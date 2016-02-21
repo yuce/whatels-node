@@ -16,6 +16,7 @@ export interface Message {
 
 export interface FunctionInfo {
     name: string;
+    arity: number;
     line: number;
 }
 
