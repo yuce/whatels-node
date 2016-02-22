@@ -8,8 +8,8 @@ var Op;
     Op[Op["symbolsQ"] = 1] = "symbolsQ";
 })(Op || (Op = {}));
 var stringToOp = {
-    "SYMBOLS": Op.symbols,
-    "SYMBOLS?": Op.symbolsQ
+    "path-symbols": Op.symbols,
+    "path-symbols?": Op.symbolsQ
 };
 function createSocket() {
     var socket = new net.Socket();
@@ -153,7 +153,7 @@ var Connection = (function () {
         return [op, ' ', payload.length, '\r\n', payload, '\r\n'].join('');
     };
     Connection.prototype.makeGetSymbolsMessage = function (path) {
-        return this.makeMessage('SYMBOLS?', path);
+        return this.makeMessage('path-symbols?', path);
     };
     return Connection;
 }());

@@ -14,6 +14,7 @@ export interface Message {
 }
 
 export interface FunctionInfo {
+    module: string;
     name: string;
     arity: number;
     line: number;
@@ -25,6 +26,7 @@ export interface ErrorInfo {
 }
 
 export interface Symbols {
+    module: string;
     functions: FunctionInfo[];
     errors: ErrorInfo[];
 }
@@ -35,8 +37,8 @@ export interface SymbolsMessage {
 }
 
 const stringToOp: any = {
-    "SYMBOLS": Op.symbols,
-    "SYMBOLS?": Op.symbolsQ
+    "path-symbols": Op.symbols,
+    "path-symbols?": Op.symbolsQ
 }
 
 function createSocket() {
@@ -102,7 +104,7 @@ export class Connection {
                     );
                 }
             });
-        })
+        });
     }
 
     public getPathSymbols(path: string): Promise<Symbols> {
@@ -193,6 +195,6 @@ export class Connection {
     }
 
     private makeGetSymbolsMessage(path: string) {
-        return this.makeMessage('SYMBOLS?', path);
+        return this.makeMessage('path-symbols?', path);
     }
 }
