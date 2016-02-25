@@ -20,9 +20,6 @@
     "url": "https://github.com/yuce/whatels-node/issues"
   },
   "homepage": "https://github.com/yuce/whatels-node#readme",
-  "dependencies": {
-    "tmp": "0.0.28"
-  },
   "devDependencies": {
       "typescript": "^1.7.5"
   }

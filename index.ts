@@ -1,11 +1,11 @@
 
 import net = require('net');
-import tmp = require('tmp');
 import fs = require('fs');
 
 enum Op {
-    symbols,
-    symbolsQ
+    pathSymbols,
+    pathSymbolsQ,
+    watchX
 }
 
 export interface Message {
@@ -37,8 +37,9 @@ export interface SymbolsMessage {
 }
 
 const stringToOp: any = {
-    "path-symbols": Op.symbols,
-    "path-symbols?": Op.symbolsQ
+    "path-symbols": Op.pathSymbols,
+    "path-symbols?": Op.pathSymbolsQ,
+    "watchX": Op.watchX
 }
 
 function createSocket() {
@@ -49,8 +50,7 @@ function createSocket() {
 
 export class Connection {
     private socket: net.Socket = null;
-    private tempPath = '';
-    private cleanupCallback: Function = null;
+    private pathSymbols: {[index: string]: Symbols} = {};
 
     constructor(private port: number = 10999,
                 private host: string = '127.0.0.1') {}
@@ -62,79 +62,41 @@ export class Connection {
             }
             this.socket = createSocket();
             this.socket.connect(this.port, this.host, () => {
-                tmp.file({keep: true}, (err, path, fd, cleanup) => {
-                    if (err) {
-                        return reject(err);
-                    }
-                    console.log('temp path: ', path);
-                    this.tempPath = path;
-                    this.cleanupCallback = cleanup;
-                    return resolve();
-                });
+                return resolve();
             });
             this.socket.on('error', (error: any) => {
                 this.socket = null;
                 reject(error);
             });
             this.socket.on('close', () => {
-                this.cleanup();
+            });
+            this.socket.on('data', (data: string) => {
+                const msg = this.parseText(data);
+                this.interpretMessage(msg);
             });
         });
     }
 
     public close() {
         this.socket.end();
-        this.cleanup();
+        this.socket = null;
     }
 
     public unref() {
         this.socket.unref();
     }
 
-    public getSymbols(source: string): Promise<Symbols> {
-        return new Promise<Symbols>((resolve, reject) => {
-            fs.writeFile(this.tempPath, source, err => {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    this.getPathSymbols(this.tempPath).then(
-                        symbols => resolve(symbols),
-                        err => reject(err)
-                    );
-                }
-            });
-        });
+    public getPathSymbols(path: string) {
+        return this.pathSymbols[path] || {};
     }
 
-    public getPathSymbols(path: string): Promise<Symbols> {
-        return new Promise<Symbols>((resolve, reject) => {
-            let dataFun = (data: string) => {
-                this.socket.removeListener('data', dataFun);
-                this.socket.removeListener('error', errorFun);
-                console.log('listener count: ', this.socket.listenerCount('data'));
-                const msg = this.parseText(data);
-                (msg === null)? reject('parse_error') : resolve(msg.symbols);
-            }
-
-            let errorFun = (error: any) => {
-                this.socket.removeListener('data', dataFun);
-                this.socket.removeListener('error', errorFun);
-                reject(error);
-            };
-
-            this.socket.write(this.makeGetSymbolsMessage(path));
-            this.socket.on('data', dataFun);
-            this.socket.on('error', errorFun)
-        });
+    public getAllPathSymbols() {
+        return this.pathSymbols;
     }
 
-    private cleanup() {
-        if (this.cleanupCallback) {
-            this.cleanupCallback();
-            this.cleanupCallback = null;
-        }
-        this.socket = null;
+    public watch(wildcard: string) {
+        const msg = this.makeWatchMessage(wildcard);
+        this.socket.write(msg);
     }
 
     private parseText(text: string) {
@@ -180,14 +142,21 @@ export class Connection {
 
     private parseMessage(msg: Message) {
         switch (msg.op) {
-            case Op.symbols:
-                return {
-                    op: msg.op,
-                    symbols: JSON.parse(msg.payload)
-                };
+            case Op.pathSymbols:
+                return this.parsePathSymbols(msg);
             default:
                 return null;
         }
+    }
+
+    private parsePathSymbols(msg: Message) {
+        let lines = msg.payload.split('\r\n');
+        if (lines.length != 2) {
+            throw "parse_error";
+        }
+        return {op: msg.op,
+                path: lines[0],
+                symbols: JSON.parse(lines[1])};
     }
 
     private makeMessage(op: string, payload: string) {
@@ -196,5 +165,16 @@ export class Connection {
 
     private makeGetSymbolsMessage(path: string) {
         return this.makeMessage('path-symbols?', path);
+    }
+
+    private makeWatchMessage(wildcard: string) {
+        return this.makeMessage('watch!', wildcard);
+    }
+
+    private interpretMessage(msg: any) {
+        if (msg.op == Op.pathSymbols) {
+            this.pathSymbols[msg.path] = msg.symbols;
+        }
+        console.log('Unknown message: ', msg.op);
     }
 }

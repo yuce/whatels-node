@@ -4,7 +4,7 @@ var whatels = require('../index.js');
 
 const path = process.argv[2];
 if (!path) {
-    console.log('usage: node client.js filename.erl');
+    console.log('usage: node client.js wildcard');
     process.exit(1);
 }
 
@@ -12,14 +12,13 @@ var w = new whatels.Connection();
 w.connect().then(
     () => {
         console.log('connected');
-        return new Promise((resolve, reject) => {
-            fs.readFile(path, 'utf8', (err, data) => {
-                return err? reject(err) : resolve(w.getSymbols(data));
-            });
-        });
+        w.watch(path);
+        setInterval(() => {
+            const allPathSymbols = w.getAllPathSymbols();
+            for (var path in allPathSymbols) {
+                console.log(path, ': ', allPathSymbols[path]);
+            }
+        }, 3000);
     },
     err => console.error(err)
-).then(symbols => {
-    w.close();
-    console.log(symbols);
-}, err => console.error(err));
+);
