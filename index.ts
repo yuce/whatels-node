@@ -172,9 +172,12 @@ export class Connection {
     }
 
     private interpretMessage(msg: any) {
-        if (msg.op == Op.pathSymbols) {
-            this.pathSymbols[msg.path] = msg.symbols;
+        switch (msg.op) {
+            case Op.pathSymbols:
+                this.pathSymbols[msg.path] = msg.symbols;
+                break;
+            default:
+                console.log('Unknown message: ', msg.op);
         }
-        console.log('Unknown message: ', msg.op);
     }
 }

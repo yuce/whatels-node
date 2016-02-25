@@ -129,10 +129,13 @@ var Connection = (function () {
         return this.makeMessage('watch!', wildcard);
     };
     Connection.prototype.interpretMessage = function (msg) {
-        if (msg.op == Op.pathSymbols) {
-            this.pathSymbols[msg.path] = msg.symbols;
+        switch (msg.op) {
+            case Op.pathSymbols:
+                this.pathSymbols[msg.path] = msg.symbols;
+                break;
+            default:
+                console.log('Unknown message: ', msg.op);
         }
-        console.log('Unknown message: ', msg.op);
     };
     return Connection;
 }());
