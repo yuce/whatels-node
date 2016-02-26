@@ -55,7 +55,7 @@ var Connection = (function () {
         this.socket.unref();
     };
     Connection.prototype.getPathSymbols = function (path) {
-        return this.pathSymbols[path] || {};
+        return this.pathSymbols[path] || null;
     };
     Connection.prototype.getAllPathSymbols = function () {
         return this.pathSymbols;

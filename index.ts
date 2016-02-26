@@ -18,6 +18,7 @@ export interface FunctionInfo {
     name: string;
     arity: number;
     line: number;
+    exported: boolean;
 }
 
 export interface ErrorInfo {
