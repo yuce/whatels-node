@@ -37,6 +37,14 @@ export interface SymbolsMessage {
     symbols: Symbols;
 }
 
+export enum CallbackAction {
+    getSymbols
+}
+
+export interface CallbackFunction {
+    (action: CallbackAction, arg?: any): void;
+};
+
 const stringToOp: any = {
     "path-symbols": Op.pathSymbols,
     "path-symbols?": Op.pathSymbolsQ,
@@ -52,15 +60,17 @@ function createSocket() {
 export class Connection {
     private socket: net.Socket = null;
     private pathSymbols: {[index: string]: Symbols} = {};
+    private callback: CallbackFunction = null;
 
     constructor(private port: number = 10999,
                 private host: string = '127.0.0.1') {}
 
-    public connect(): Promise<void> {
+    public connect(callback?: CallbackFunction): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             if (this.socket) {
-                this.close();
+                return resolve();
             }
+            this.callback = callback;
             this.socket = createSocket();
             this.socket.connect(this.port, this.host, () => {
                 return resolve();
@@ -74,6 +84,11 @@ export class Connection {
             this.socket.on('data', (data: string) => {
                 const msg = this.parseText(data);
                 this.interpretMessage(msg);
+                if (msg.op == Op.pathSymbols) {
+                    if (this.callback) {
+                        callback(CallbackAction.getSymbols, msg);
+                    }
+                }
             });
         });
     }

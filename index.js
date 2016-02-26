@@ -6,6 +6,11 @@ var Op;
     Op[Op["pathSymbolsQ"] = 1] = "pathSymbolsQ";
     Op[Op["watchX"] = 2] = "watchX";
 })(Op || (Op = {}));
+(function (CallbackAction) {
+    CallbackAction[CallbackAction["getSymbols"] = 0] = "getSymbols";
+})(exports.CallbackAction || (exports.CallbackAction = {}));
+var CallbackAction = exports.CallbackAction;
+;
 var stringToOp = {
     "path-symbols": Op.pathSymbols,
     "path-symbols?": Op.pathSymbolsQ,
@@ -24,13 +29,15 @@ var Connection = (function () {
         this.host = host;
         this.socket = null;
         this.pathSymbols = {};
+        this.callback = null;
     }
-    Connection.prototype.connect = function () {
+    Connection.prototype.connect = function (callback) {
         var _this = this;
         return new Promise(function (resolve, reject) {
             if (_this.socket) {
-                _this.close();
+                return resolve();
             }
+            _this.callback = callback;
             _this.socket = createSocket();
             _this.socket.connect(_this.port, _this.host, function () {
                 return resolve();
@@ -44,6 +51,11 @@ var Connection = (function () {
             _this.socket.on('data', function (data) {
                 var msg = _this.parseText(data);
                 _this.interpretMessage(msg);
+                if (msg.op == Op.pathSymbols) {
+                    if (_this.callback) {
+                        callback(CallbackAction.getSymbols, msg);
+                    }
+                }
             });
         });
     };
