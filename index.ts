@@ -86,8 +86,8 @@ export class Connection {
         this.socket.unref();
     }
 
-    public getPathSymbols(path: string) {
-        return this.pathSymbols[path] || {};
+    public getPathSymbols(path: string): Symbols {
+        return this.pathSymbols[path] || null;
     }
 
     public getAllPathSymbols() {
