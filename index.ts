@@ -48,7 +48,7 @@ export interface CallbackFunction {
 const stringToOp: any = {
     "path-symbols": Op.pathSymbols,
     "path-symbols?": Op.pathSymbolsQ,
-    "watchX": Op.watchX
+    "watch!": Op.watchX
 }
 
 function createSocket() {

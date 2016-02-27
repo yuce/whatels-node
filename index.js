@@ -14,7 +14,7 @@ var CallbackAction = exports.CallbackAction;
 var stringToOp = {
     "path-symbols": Op.pathSymbols,
     "path-symbols?": Op.pathSymbolsQ,
-    "watchX": Op.watchX
+    "watch!": Op.watchX
 };
 function createSocket() {
     var socket = new net.Socket();
