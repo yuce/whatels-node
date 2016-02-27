@@ -5,16 +5,19 @@ var Op;
     Op[Op["pathSymbols"] = 0] = "pathSymbols";
     Op[Op["pathSymbolsQ"] = 1] = "pathSymbolsQ";
     Op[Op["watchX"] = 2] = "watchX";
+    Op[Op["discardX"] = 3] = "discardX";
 })(Op || (Op = {}));
 (function (CallbackAction) {
     CallbackAction[CallbackAction["getSymbols"] = 0] = "getSymbols";
+    CallbackAction[CallbackAction["discardPath"] = 1] = "discardPath";
 })(exports.CallbackAction || (exports.CallbackAction = {}));
 var CallbackAction = exports.CallbackAction;
 ;
 var stringToOp = {
     "path-symbols": Op.pathSymbols,
     "path-symbols?": Op.pathSymbolsQ,
-    "watch!": Op.watchX
+    "watch!": Op.watchX,
+    "discard!": Op.discardX
 };
 function createSocket() {
     var socket = new net.Socket();
@@ -51,9 +54,14 @@ var Connection = (function () {
             _this.socket.on('data', function (data) {
                 var msg = _this.parseText(data);
                 _this.interpretMessage(msg);
-                if (msg.op == Op.pathSymbols) {
-                    if (_this.callback) {
-                        callback(CallbackAction.getSymbols, msg);
+                if (_this.callback) {
+                    switch (msg.op) {
+                        case Op.pathSymbols:
+                            callback(CallbackAction.getSymbols, msg);
+                            break;
+                        case Op.discardX:
+                            callback(CallbackAction.discardPath, msg);
+                            break;
                     }
                 }
             });
@@ -118,6 +126,8 @@ var Connection = (function () {
         switch (msg.op) {
             case Op.pathSymbols:
                 return this.parsePathSymbols(msg);
+            case Op.discardX:
+                return { op: msg.op, path: msg.payload };
             default:
                 return null;
         }
@@ -144,6 +154,9 @@ var Connection = (function () {
         switch (msg.op) {
             case Op.pathSymbols:
                 this.pathSymbols[msg.path] = msg.symbols;
+                break;
+            case Op.discardX:
+                delete this.pathSymbols[msg.path];
                 break;
             default:
                 console.log('Unknown message: ', msg.op);

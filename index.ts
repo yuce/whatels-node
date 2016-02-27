@@ -5,7 +5,8 @@ import fs = require('fs');
 enum Op {
     pathSymbols,
     pathSymbolsQ,
-    watchX
+    watchX,
+    discardX
 }
 
 export interface Message {
@@ -38,7 +39,8 @@ export interface SymbolsMessage {
 }
 
 export enum CallbackAction {
-    getSymbols
+    getSymbols,
+    discardPath
 }
 
 export interface CallbackFunction {
@@ -48,7 +50,8 @@ export interface CallbackFunction {
 const stringToOp: any = {
     "path-symbols": Op.pathSymbols,
     "path-symbols?": Op.pathSymbolsQ,
-    "watch!": Op.watchX
+    "watch!": Op.watchX,
+    "discard!": Op.discardX
 }
 
 function createSocket() {
@@ -84,9 +87,14 @@ export class Connection {
             this.socket.on('data', (data: string) => {
                 const msg = this.parseText(data);
                 this.interpretMessage(msg);
-                if (msg.op == Op.pathSymbols) {
-                    if (this.callback) {
-                        callback(CallbackAction.getSymbols, msg);
+                if (this.callback) {
+                    switch (msg.op) {
+                        case Op.pathSymbols:
+                           callback(CallbackAction.getSymbols, msg);
+                            break;
+                        case Op.discardX:
+                            callback(CallbackAction.discardPath, msg);
+                            break;
                     }
                 }
             });
@@ -160,6 +168,8 @@ export class Connection {
         switch (msg.op) {
             case Op.pathSymbols:
                 return this.parsePathSymbols(msg);
+            case Op.discardX:
+                return {op: msg.op, path: msg.payload};
             default:
                 return null;
         }
@@ -191,6 +201,9 @@ export class Connection {
         switch (msg.op) {
             case Op.pathSymbols:
                 this.pathSymbols[msg.path] = msg.symbols;
+                break;
+            case Op.discardX:
+                delete this.pathSymbols[msg.path];
                 break;
             default:
                 console.log('Unknown message: ', msg.op);
