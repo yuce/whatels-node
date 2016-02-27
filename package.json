@@ -1,6 +1,6 @@
 {
   "name": "whatels",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Node client for Whatels.",
   "main": "index.js",
   "scripts": {
