@@ -152,7 +152,7 @@ export class Connection {
     }
 
     private parseFlip(flip: string) {
-        const parts = flip.split(" ", 2);
+        const parts = flip.split(";", 2);
         if (parts.length != 2) {
             throw "parse_error";
         }
@@ -186,7 +186,7 @@ export class Connection {
     }
 
     private makeMessage(op: string, payload: string) {
-        return [op, ' ', payload.length, '\r\n', payload, '\r\n'].join('');
+        return [op, ';', payload.length, '\r\n', payload, '\r\n'].join('');
     }
 
     private makeGetSymbolsMessage(path: string) {

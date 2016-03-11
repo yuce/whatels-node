@@ -1,4 +1,3 @@
-"use strict";
 var net = require('net');
 var Op;
 (function (Op) {
@@ -111,7 +110,7 @@ var Connection = (function () {
         };
     };
     Connection.prototype.parseFlip = function (flip) {
-        var parts = flip.split(" ", 2);
+        var parts = flip.split(";", 2);
         if (parts.length != 2) {
             throw "parse_error";
         }
@@ -142,7 +141,7 @@ var Connection = (function () {
             symbols: JSON.parse(lines[1]) };
     };
     Connection.prototype.makeMessage = function (op, payload) {
-        return [op, ' ', payload.length, '\r\n', payload, '\r\n'].join('');
+        return [op, ';', payload.length, '\r\n', payload, '\r\n'].join('');
     };
     Connection.prototype.makeGetSymbolsMessage = function (path) {
         return this.makeMessage('path-symbols?', path);
@@ -163,5 +162,5 @@ var Connection = (function () {
         }
     };
     return Connection;
-}());
+})();
 exports.Connection = Connection;
